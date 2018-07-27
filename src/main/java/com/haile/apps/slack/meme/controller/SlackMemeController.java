@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Controller
@@ -83,10 +84,24 @@ public class SlackMemeController {
 	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces=MediaType.APPLICATION_JSON)
 	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request, @RequestParam HashMap<String, Object> body){
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());
-		logger.info("body: " + body);
-		logger.info("Response url: " + body.get("response_url"));
+		String responseURL = null;
+		JsonNode originalMessage = null;
 		ObjectMapper mapper = new ObjectMapper();		
 		try {
+			JsonNode payload = mapper.valueToTree(body).get("payload");
+			logger.info(payload.textValue());
+			if(payload.get("type").asText().equalsIgnoreCase("interactive_message")) {
+				new ResponseEntity<> ("Not interactive message", HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+			if(payload.get("actions").get(0).get("name").textValue().equalsIgnoreCase("post")) {
+				responseURL = payload.get("response_url").textValue();
+				logger.info(responseURL);
+				originalMessage = payload.get("original_message");
+				logger.info(originalMessage.asText());
+			} else if(payload.get("actions").get(0).get("name").textValue().equalsIgnoreCase("cancel")) {
+				new ResponseEntity<> (null, HttpStatus.OK);
+			}
+			
 			logger.info(mapper.writeValueAsString(body));
 		} catch (JsonProcessingException e) {
 			new ResponseEntity<> ("Couldn't read input!", HttpStatus.INTERNAL_SERVER_ERROR);
