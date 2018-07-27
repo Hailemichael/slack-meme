@@ -27,7 +27,7 @@ public class SlackMemeController {
 	private static final Logger logger = LoggerFactory.getLogger(SlackMemeController.class);
 	
 	@RequestMapping(value = "/meme", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces=MediaType.APPLICATION_JSON)
-	public @ResponseBody ResponseEntity<?> memefyImage(HttpServletRequest request, @RequestBody HashMap<String, Object> body){
+	public @ResponseBody ResponseEntity<?> memefyImage(HttpServletRequest request, @RequestParam HashMap<String, Object> body){
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());
 		logger.info("Content-Type: " + request.getHeader("Content-Type") + " or " + request.getContentType() + " Encoding: " + request.getCharacterEncoding());
 		logger.info("Response url: " + body.get("response_url"));
@@ -83,9 +83,9 @@ public class SlackMemeController {
 	}
 	
 	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces=MediaType.APPLICATION_JSON)
-	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request, @RequestBody HashMap<String, Object> body){
+	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request, @RequestParam HashMap<String, Object> body){
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());
-		logger.info("Content-Type: " + request.getHeader("Content-Type") + " or " + request.getContentType() + " Encoding: " + request.getCharacterEncoding());
+		@SuppressWarnings("unchecked")
 		HashMap<String, Object> payload = (HashMap<String, Object>) body.get("payload");
 		logger.info("response_url: " + ((payload != null)? payload.get("response_url"):"payload cannot be found"));
 		ObjectMapper mapper = new ObjectMapper();		
