@@ -1,5 +1,6 @@
 package com.haile.apps.slack.meme.controller;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,10 +93,11 @@ public class SlackMemeController {
 		return new ResponseEntity<> (jsonString, HttpStatus.OK);
 	}
 	
-	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces=MediaType.APPLICATION_JSON)
+	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST)
 	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request){
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());
 		logger.info(request.getContentType());
+		logger.info(getBody(request));
 		Map<String, String[]> parMap = request.getParameterMap();
 		String responseURL = null;
 		JsonNode originalMessage = null;
@@ -150,5 +152,35 @@ public class SlackMemeController {
 		
 		return new ResponseEntity<> (jsonString, HttpStatus.OK);
 	}
+	
+	private String getBody(HttpServletRequest req) {
+		  String body = "";
+		  if (req.getMethod().equals("POST") )
+		  {
+		    StringBuilder sb = new StringBuilder();
+		    BufferedReader bufferedReader = null;
+
+		    try {
+		      bufferedReader =  req.getReader();
+		      char[] charBuffer = new char[128];
+		      int bytesRead;
+		      while ((bytesRead = bufferedReader.read(charBuffer)) != -1) {
+		        sb.append(charBuffer, 0, bytesRead);
+		      }
+		    } catch (IOException ex) {
+		      // swallow silently -- can't get body, won't
+		    } finally {
+		      if (bufferedReader != null) {
+		        try {
+		          bufferedReader.close();
+		        } catch (IOException ex) {
+		          // swallow silently -- can't get body, won't
+		        }
+		      }
+		    }
+		    body = sb.toString();
+		  }
+		  return body;
+		}
 
 }
