@@ -96,6 +96,8 @@ public class SlackMemeController {
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());		
 		String responseURL = null;
 		JsonNode originalMessage = null;
+		logger.info(String.valueOf(request.getParameterMap().get("payload").length));
+		logger.info(request.getParameterMap().get("payload").toString());
 		String bodyString = request.getParameterMap().entrySet().iterator().next().getKey();
 		logger.info(bodyString);
 	
@@ -124,7 +126,8 @@ public class SlackMemeController {
 			}
 			
 		} catch (IOException e) {
-			return new ResponseEntity<> ("Couldn't read input! " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+			logger.info("Couldn't read input! " + e.getMessage());
+			return new ResponseEntity<> ("Couldn't read input! ", HttpStatus.INTERNAL_SERVER_ERROR);
 		}		
 	    
 		
@@ -141,10 +144,12 @@ public class SlackMemeController {
 		try {
 			jsonString = mapper.writeValueAsString(output);
 			logger.info("Output: " + jsonString);
-		} catch (JsonProcessingException e) {			
-			return new ResponseEntity<> ("Couldn't generate output!" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+		} catch (JsonProcessingException e) {		
+			logger.info("Couldn't generate output!" + e.getMessage());
+			return new ResponseEntity<> ("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		} catch (IOException e) {
-			return new ResponseEntity<> ("Couldn't generate output!" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+			logger.info("Couldn't generate output!" + e.getMessage());
+			return new ResponseEntity<> ("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
 		return new ResponseEntity<> (jsonString, HttpStatus.OK);
