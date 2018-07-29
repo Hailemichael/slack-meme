@@ -1,6 +1,5 @@
 package com.haile.apps.slack.meme.controller;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -93,42 +91,42 @@ public class SlackMemeController {
 		return new ResponseEntity<> (jsonString, HttpStatus.OK);
 	}
 	
-	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST)
-	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request){
-		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());
-		logger.info(request.getContentType());
-		logger.info(getBody(request));
-		Map<String, String[]> parMap = request.getParameterMap();
+	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces=MediaType.APPLICATION_JSON)
+	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request) {
+		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_" + request.getRemoteUser());		
 		String responseURL = null;
 		JsonNode originalMessage = null;
-		ObjectMapper mapper = new ObjectMapper();		
-/*		try {
-			String jsonString = mapper.writeValueAsString(body);			
-			JsonNode jsonBody = mapper.readTree(jsonString);
-			JsonNode payload = jsonBody.get("payload");
-			logger.info(payload.getTextValue());
-			JsonNode type = payload.get("type");
-			if(payload.get("type").asText().equalsIgnoreCase("interactive_message")) {
+		String bodyString = request.getParameterMap().entrySet().iterator().next().getKey();
+		logger.info(bodyString);
+	
+	    ObjectMapper mapper = new ObjectMapper();	    
+	    
+	    JsonNode node;
+		try {
+			node = mapper.readTree(bodyString);
+			JsonNode payload = node.get("payload");	    
+			JsonNode type = payload.get("type"); 
+			
+			if(type.toString().equalsIgnoreCase("interactive_message")) {
 				new ResponseEntity<> ("Not interactive message", HttpStatus.INTERNAL_SERVER_ERROR);
 			}
 			JsonNode actions = payload.get("actions");
+			String command = actions.get(0).get("name").getTextValue();
 			
-			if(payload.get("actions").get(0).get("name").getTextValue().equalsIgnoreCase("post")) {
+			if(command.equalsIgnoreCase("post")) {
+				originalMessage = payload.get("original_message");
 				responseURL = payload.get("response_url").getTextValue();
 				logger.info(responseURL);
-				originalMessage = payload.get("original_message");
-				logger.info(originalMessage.asText());
-			} else if(payload.get("actions").get(0).get("name").getTextValue().equalsIgnoreCase("cancel")) {
-				new ResponseEntity<> (null, HttpStatus.OK);
+			} else if(command.equalsIgnoreCase("cancel")) {
+				return new ResponseEntity<> (null, HttpStatus.OK);
+			} else {
+				return new ResponseEntity<> ("Not allowed!", HttpStatus.BAD_REQUEST);
 			}
 			
-			logger.info(mapper.writeValueAsString(body));
-		} catch (JsonProcessingException e) {
-			new ResponseEntity<> ("Couldn't read input!", HttpStatus.INTERNAL_SERVER_ERROR);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
+			return new ResponseEntity<> ("Couldn't read input! " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+		}		
+	    
 		
 		ArrayList<HashMap<String, Object>> attachments = new ArrayList<HashMap<String, Object>> ();
 		HashMap<String, Object> attachment = new HashMap<String, Object> ();
@@ -144,43 +142,11 @@ public class SlackMemeController {
 			jsonString = mapper.writeValueAsString(output);
 			logger.info("Output: " + jsonString);
 		} catch (JsonProcessingException e) {			
-			new ResponseEntity<> ("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<> ("Couldn't generate output!" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return new ResponseEntity<> ("Couldn't generate output!" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
 		return new ResponseEntity<> (jsonString, HttpStatus.OK);
 	}
-	
-	private String getBody(HttpServletRequest req) {
-		  String body = "";
-		  if (req.getMethod().equals("POST") )
-		  {
-		    StringBuilder sb = new StringBuilder();
-		    BufferedReader bufferedReader = null;
-
-		    try {
-		      bufferedReader =  req.getReader();
-		      char[] charBuffer = new char[128];
-		      int bytesRead;
-		      while ((bytesRead = bufferedReader.read(charBuffer)) != -1) {
-		        sb.append(charBuffer, 0, bytesRead);
-		      }
-		    } catch (IOException ex) {
-		      // swallow silently -- can't get body, won't
-		    } finally {
-		      if (bufferedReader != null) {
-		        try {
-		          bufferedReader.close();
-		        } catch (IOException ex) {
-		          // swallow silently -- can't get body, won't
-		        }
-		      }
-		    }
-		    body = sb.toString();
-		  }
-		  return body;
-		}
-
 }
