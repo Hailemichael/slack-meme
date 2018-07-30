@@ -187,11 +187,9 @@ public class SlackMemeController {
 		LinkedHashMap<String, Object> errorMap = new LinkedHashMap<String, Object>();
 		JsonNode payload;
 		try {
-			payload = mapper.readTree(bodyString);
-			
+			payload = mapper.readTree(bodyString);			
 			JsonNode actions = payload.get("actions");
-			String command = actions.get(0).get("name").getTextValue();
-			
+			String command = actions.get(0).get("name").getTextValue();			
 
 			if (command.equalsIgnoreCase("post")) {
 				JsonNode originalMessage = payload.get("original_message");
@@ -209,12 +207,10 @@ public class SlackMemeController {
 					return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
 				}								
 				logger.info(originalMessage.get("text").getTextValue());
-				//responseUrl = payload.get("response_url").getTextValue();
-				//logger.info("ResponseUrl: " + responseUrl);
+				String responseUrl = payload.get("response_url").getTextValue();
+				logger.info("ResponseUrl: " + responseUrl);
 			} else if (command.equalsIgnoreCase("cancel")) {
-				/*errorMap.put("text", " ");
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.OK);*/
-				return null;
+				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.OK);
 			} else {
 				errorMap.put("text", "Not allowed button command!");
 				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
