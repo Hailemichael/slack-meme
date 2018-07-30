@@ -37,7 +37,7 @@ public class SlackMemeController {
 	private static final Logger logger = LoggerFactory.getLogger(SlackMemeController.class);
 
 	@RequestMapping(value = "/meme", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
-	public @ResponseBody ResponseEntity<?> memefyImage(HttpServletRequest request) {
+	public void memefyImage(HttpServletRequest request) {
 		logger.info("Incomming request on path: " + request.getServletPath() + " and from addr: "
 				+ request.getRemoteAddr());
 		Map<String, String[]> parameterMap = request.getParameterMap();
@@ -75,10 +75,10 @@ public class SlackMemeController {
 			logger.info("Memefy json Body: " + memefyJsonString);
 		} catch (JsonProcessingException e) {
 			logger.error("Couldn't generate body to MemefyApi!");
-			return new ResponseEntity<>("Couldn't memefy the image resource specified by url: " + imageUrl, HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't memefy the image resource specified by url: " + imageUrl, HttpStatus.INTERNAL_SERVER_ERROR);
 		} catch (IOException e) {
 			logger.error("Couldn't generate body to MemefyApi!");
-			return new ResponseEntity<>("Couldn't memefy the image resource specified by url: " + imageUrl, HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't memefy the image resource specified by url: " + imageUrl, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
 		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic("admin", "abbhst");
@@ -137,10 +137,10 @@ public class SlackMemeController {
 			logger.info("Output: " + jsonString);
 		} catch (JsonProcessingException e) {
 			logger.error("Couldn't generate slack output!");
-			return new ResponseEntity<>("Couldn't generate slack output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't generate slack output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		} catch (IOException e) {
 			logger.error("Couldn't generate slack output!");
-			return new ResponseEntity<>("Couldn't generate slack output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't generate slack output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
 		WebTarget slackWebTarget = client.target(responseUrl);
@@ -149,11 +149,11 @@ public class SlackMemeController {
 				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
 		
 		logger.info("Message OPTION posted to Slack with status code: " + slackResponse.getStatus());
-		return new ResponseEntity<>(jsonString, HttpStatus.OK);
+		//return new ResponseEntity<>(null, HttpStatus.OK);
 	}
 
 	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
-	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request) {
+	public void confirmPost(HttpServletRequest request) {
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_"
 				+ request.getRemoteUser());
 		String responseUrl = null;
@@ -165,26 +165,31 @@ public class SlackMemeController {
 		JsonNode payload;
 		try {
 			payload = mapper.readTree(bodyString);
-			//JsonNode type = payload.get("type");
 			
 			JsonNode actions = payload.get("actions");
 			String command = actions.get(0).get("name").getTextValue();
 
 			if (command.equalsIgnoreCase("post")) {
 				JsonNode originalMessage = payload.get("original_message");
-				imageUrl = payload.get("original_message").get("attachments").get(0).get("image_url").getTextValue();
+				JsonNode attachements = originalMessage.get("attachments");
+				if (attachements.get(0).has("image_url")) {
+					imageUrl = attachements.get(0).get("image_url").getTextValue();
+				} else if (attachements.get(1).has("image_url")) {
+					imageUrl = attachements.get(1).get("image_url").getTextValue();
+				}
+				
 				logger.info(originalMessage.get("text").getTextValue());
 				responseUrl = payload.get("response_url").getTextValue();
 				logger.info("ResponseUrl: " + responseUrl);
 			} else if (command.equalsIgnoreCase("cancel")) {				
-				return new ResponseEntity<>(null, HttpStatus.OK);
+				//return new ResponseEntity<>(null, HttpStatus.OK);
 			} else {
-				return new ResponseEntity<>("Not allowed!", HttpStatus.BAD_REQUEST);
+				//return new ResponseEntity<>("Not allowed!", HttpStatus.BAD_REQUEST);
 			}
 
 		} catch (IOException e) {
 			logger.info("Couldn't read input! " + e.getMessage());
-			return new ResponseEntity<>("Couldn't read input! ", HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't read input! ", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		ArrayList<HashMap<String, Object>> attachments = new ArrayList<HashMap<String, Object>>();
@@ -201,10 +206,10 @@ public class SlackMemeController {
 			logger.info("Output: " + jsonString);
 		} catch (JsonProcessingException e) {
 			logger.info("Couldn't generate output!" + e.getMessage());
-			return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		} catch (IOException e) {
 			logger.info("Couldn't generate output!" + e.getMessage());
-			return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			//return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		ClientConfig clientConfig = new ClientConfig();
 		clientConfig.register(JacksonFeature.class);
@@ -214,6 +219,6 @@ public class SlackMemeController {
 		Response response = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
 				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
 		logger.info("Message Confirmation posted to Slack with status code: " + response.getStatus());
-		return new ResponseEntity<>(jsonString, HttpStatus.OK);
+		//return new ResponseEntity<>(null, HttpStatus.OK);
 	}
 }
