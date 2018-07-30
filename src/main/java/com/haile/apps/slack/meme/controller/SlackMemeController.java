@@ -179,7 +179,7 @@ public class SlackMemeController {
 	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request) {
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_"
 				+ request.getRemoteUser());
-		String responseUrl = null;
+		String text = null;
 		String imageUrl = null;
 		String bodyString = request.getParameterMap().get("payload")[0];
 		logger.info("Payload: " + bodyString);
@@ -195,6 +195,7 @@ public class SlackMemeController {
 
 			if (command.equalsIgnoreCase("post")) {
 				JsonNode originalMessage = payload.get("original_message");
+				text = (originalMessage.get("text")!=null)?originalMessage.get("text").getTextValue():"Your memefied image...";
 				JsonNode attachements = originalMessage.get("attachments");
 				if (attachements.isArray() && (attachements.size() == 2)) {
 					if (attachements.get(0).has("image_url")) {
@@ -210,8 +211,10 @@ public class SlackMemeController {
 				logger.info(originalMessage.get("text").getTextValue());
 				//responseUrl = payload.get("response_url").getTextValue();
 				//logger.info("ResponseUrl: " + responseUrl);
-			} else if (command.equalsIgnoreCase("cancel")) {				
-				return new ResponseEntity<>(null, HttpStatus.OK);
+			} else if (command.equalsIgnoreCase("cancel")) {
+				/*errorMap.put("text", " ");
+				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.OK);*/
+				return null;
 			} else {
 				errorMap.put("text", "Not allowed button command!");
 				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
@@ -234,17 +237,28 @@ public class SlackMemeController {
 
 		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
 		output.put("response_type", "in_channel");
+		output.put("text", text);
 		output.put("attachments", attachments);
 		String jsonString = null;
 		try {
 			jsonString = mapper.writeValueAsString(output);
 			logger.info("Output: " + jsonString);
 		} catch (JsonProcessingException e) {
-			logger.info("Couldn't generate output!" + e.getMessage());
-			return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			logger.error("Couldn't generate slack output!");
+			errorMap.put("text", "Couldn't generate slack output!");
+			try {
+				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+			} catch (IOException e1) {
+				logger.error("Error while preparing body to Slack reply");
+			}
 		} catch (IOException e) {
-			logger.info("Couldn't generate output!" + e.getMessage());
-			return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
+			logger.error("Couldn't generate slack output!");
+			errorMap.put("text", "Couldn't generate slack output!");
+			try {
+				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+			} catch (IOException e1) {
+				logger.error("Error while preparing body to Slack reply");
+			}
 		}
 		/*ClientConfig clientConfig = new ClientConfig();
 		clientConfig.register(JacksonFeature.class);
