@@ -46,6 +46,7 @@ public class SlackMemeController {
 				+ parameterMap.get("user_id")[0] + ":" + parameterMap.get("user_name")[0] + ", "
 				+ parameterMap.get("command")[0] + ", " + parameterMap.get("text")[0]);
 		String responseUrl = parameterMap.get("response_url")[0];
+		logger.info("ResponseUrl: " + responseUrl);
 		String slackMessage = parameterMap.get("text")[0];
 		
 		String imageUrl = null;
@@ -141,9 +142,13 @@ public class SlackMemeController {
 			logger.error("Couldn't generate slack output!");
 			return new ResponseEntity<>("Couldn't generate slack output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-		//Response slackResponse = null;
-		//slackResponse = sendToSlack(responseUrl, jsonString, "", "");
-		//logger.info("Message OPTION posted to Slack with status code: " + slackResponse.getStatus());
+		
+		WebTarget slackWebTarget = client.target(responseUrl).path("/");
+
+		Response slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
+		
+		logger.info("Message OPTION posted to Slack with status code: " + slackResponse.getStatus());
 		return new ResponseEntity<>(jsonString, HttpStatus.OK);
 	}
 
@@ -169,7 +174,7 @@ public class SlackMemeController {
 				imageUrl = payload.get("original_message").get("attachments").get(0).get("image_url").getTextValue();
 				logger.info(originalMessage.get("text").getTextValue());
 				responseUrl = payload.get("response_url").getTextValue();
-				logger.info(responseUrl);
+				logger.info("ResponseUrl: " + responseUrl);
 			} else if (command.equalsIgnoreCase("cancel")) {				
 				return new ResponseEntity<>(null, HttpStatus.OK);
 			} else {
@@ -200,10 +205,14 @@ public class SlackMemeController {
 			logger.info("Couldn't generate output!" + e.getMessage());
 			return new ResponseEntity<>("Couldn't generate output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-		//Response slackResponse = null;
-		
-		//slackResponse = sendToSlack(responseUrl, jsonString, "", "");
+		ClientConfig clientConfig = new ClientConfig();
+		clientConfig.register(JacksonFeature.class);
+		Client client = ClientBuilder.newClient(clientConfig);
+		WebTarget webTarget = client.target(responseUrl).path("/");
 
+		Response response = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
+				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
+		logger.info("Message Confirmation posted to Slack with status code: " + response.getStatus());
 		return new ResponseEntity<>(jsonString, HttpStatus.OK);
 	}
 
