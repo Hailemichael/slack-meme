@@ -36,11 +36,11 @@
     <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-json-jackson</artifactId>
-    </dependency>
+    </dependency>    
     <dependency>
-      <groupId>com.sun.jersey</groupId>
-      <artifactId>jersey-client</artifactId>
-      <version>1.19.3</version>
+      <groupId>org.glassfish.jersey.inject</groupId>
+      <artifactId>jersey-hk2</artifactId>
+      <version>2.26</version>
     </dependency>
     <dependency>
       <groupId>com.sun.jersey</groupId>
