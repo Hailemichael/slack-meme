@@ -86,20 +86,20 @@ public class SlackMemeController {
 		clientConfig.register(authFeature);
 		clientConfig.register(JacksonFeature.class);
 		Client client = ClientBuilder.newClient(clientConfig);
-		WebTarget webTarget = client.target("https://memefyapi.herokuapp.com/memefy/url").path("/");
+		/*WebTarget webTarget = client.target("https://memefyapi.herokuapp.com/memefy/url");
 
 		Response memeResponse = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
 				.post(Entity.entity(memefyJsonString, MediaType.APPLICATION_JSON_TYPE));
     			
 		HashMap<String, String> memeResponseMap = memeResponse.readEntity(new GenericType<HashMap<String, String>>() { });
 		String responseImageUrl = memeResponseMap.get("imageUrl");
-		logger.info("meme image url: " + responseImageUrl);
+		logger.info("meme image url: " + responseImageUrl);*/
 		//End
 		
 		// Prepare image attachments
 		ArrayList<HashMap<String, Object>> attachments = new ArrayList<HashMap<String, Object>>();
 		HashMap<String, Object> imageAttachment = new HashMap<String, Object>();		
-		imageAttachment.put("image_url", responseImageUrl);
+		imageAttachment.put("image_url", imageUrl);//responseImageUrl
 		
 		// Prepare option attachments
 		HashMap<String, Object> optionAttachment = new HashMap<String, Object>();
@@ -143,7 +143,7 @@ public class SlackMemeController {
 			return new ResponseEntity<>("Couldn't generate slack output!", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		
-		WebTarget slackWebTarget = client.target(responseUrl).path("/");
+		WebTarget slackWebTarget = client.target(responseUrl);
 
 		Response slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
 				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
@@ -159,6 +159,7 @@ public class SlackMemeController {
 		String responseUrl = null;
 		String imageUrl = null;
 		String bodyString = request.getParameterMap().get("payload")[0];
+		logger.info("Payload: " + bodyString);
 		ObjectMapper mapper = new ObjectMapper();
 		
 		JsonNode payload;
@@ -215,19 +216,4 @@ public class SlackMemeController {
 		logger.info("Message Confirmation posted to Slack with status code: " + response.getStatus());
 		return new ResponseEntity<>(jsonString, HttpStatus.OK);
 	}
-
-	private Response sendToSlack(String responseURL, String jsonString, String apiUser, String apiPassword) {
-		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic(apiUser, apiPassword);
-		ClientConfig clientConfig = new ClientConfig();
-		clientConfig.register(authFeature);
-		clientConfig.register(JacksonFeature.class);
-		Client client = ClientBuilder.newClient(clientConfig);
-		WebTarget webTarget = client.target(responseURL).path("/");
-
-		Response response = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
-				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
-
-		return response;
-	}
-
 }
