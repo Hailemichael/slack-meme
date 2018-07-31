@@ -38,18 +38,26 @@ public class SlackMemeController {
 	private static final Logger logger = LoggerFactory.getLogger(SlackMemeController.class);
 
 	@RequestMapping(value = "/meme", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
-	public @ResponseBody ResponseEntity<?> memefyImage(HttpServletRequest request) {
+	public void memefyImage(HttpServletRequest request) {
 		logger.info("Incomming request on path: " + request.getServletPath() + " and from addr: "
 				+ request.getRemoteAddr());
+		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic("admin", "abbhst");
+		ClientConfig clientConfig = new ClientConfig();
+		clientConfig.register(authFeature);
+		clientConfig.register(JacksonFeature.class);
+		Client client = ClientBuilder.newClient(clientConfig);
+		LinkedHashMap<String, Object> errorMap = new LinkedHashMap<String, Object>();
 		Map<String, String[]> parameterMap = request.getParameterMap();
+		if (!parameterMap.isEmpty() && parameterMap.containsValue("response_url") && parameterMap.get("response_url")[0] != null) {
 		logger.info(parameterMap.get("team_id")[0] + ":" + parameterMap.get("team_domain")[0] + ", "
 				+ parameterMap.get("channel_id")[0] + ":" + parameterMap.get("channel_name")[0] + ", "
 				+ parameterMap.get("user_id")[0] + ":" + parameterMap.get("user_name")[0] + ", "
 				+ parameterMap.get("command")[0] + ", " + parameterMap.get("text")[0]);
 		String responseUrl = parameterMap.get("response_url")[0];
 		logger.info("ResponseUrl: " + responseUrl);
+		
+		WebTarget slackWebTarget = client.target(responseUrl);
 		String slackMessage = parameterMap.get("text")[0];
-		LinkedHashMap<String, Object> errorMap = new LinkedHashMap<String, Object>();
 		String imageUrl = null;
 		String memeText = null;
 		
@@ -63,13 +71,13 @@ public class SlackMemeController {
 			imageUrl = "http://habeshait.com/MemePics/original/sunflower.jpg";
 			memeText = slackMessage;
 		}
-		
+		ObjectMapper mapper = new ObjectMapper();
 		//memefyapi request
-		HashMap<String, String> memeRequest = new HashMap<String, String>();
+		/*HashMap<String, String> memeRequest = new HashMap<String, String>();
 		memeRequest.put("imageUrl", imageUrl);
 		memeRequest.put("memeText", memeText);
 				
-		ObjectMapper mapper = new ObjectMapper();
+		
 		String memefyJsonString = null;
 		try {
 			memefyJsonString = mapper.writeValueAsString(memeRequest);
@@ -92,11 +100,7 @@ public class SlackMemeController {
 			}
 		}
 		
-		/*HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic("admin", "abbhst");
-		ClientConfig clientConfig = new ClientConfig();
-		clientConfig.register(authFeature);
-		clientConfig.register(JacksonFeature.class);
-		Client client = ClientBuilder.newClient(clientConfig);
+		
 		WebTarget webTarget = client.target("https://memefyapi.herokuapp.com/memefy/url");
 
 		Response memeResponse = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
@@ -109,14 +113,18 @@ public class SlackMemeController {
 		
 		// Prepare image attachments
 		ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
-		LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<String, Object>();		
+		LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<String, Object>();
+		imageAttachment.put("fallback", imageUrl);
+		imageAttachment.put("callback_id", "confirm_meme_image");
+		imageAttachment.put("color", "#00cc66");
+		imageAttachment.put("attachment_type", "default");
 		imageAttachment.put("image_url", imageUrl);
 		
 		// Prepare option attachments
 		LinkedHashMap<String, Object> optionAttachment = new LinkedHashMap<String, Object>();
-		optionAttachment.put("fallback", "Do you want to post the meme?");
+		optionAttachment.put("fallback", "Option buttons, Post or Cancel");
 		optionAttachment.put("title", "Do you want to post the meme?");
-		optionAttachment.put("callback_id", "confirm_meme_1985");
+		optionAttachment.put("callback_id", "confirm_meme_button");
 		optionAttachment.put("color", "#3AA3E3");
 		optionAttachment.put("attachment_type", "default");
 		ArrayList<LinkedHashMap<String, Object>> actions = new ArrayList<LinkedHashMap<String, Object>>();
@@ -141,145 +149,142 @@ public class SlackMemeController {
 		//prepare output
 		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
 		output.put("response_type", "in_channel");
-		output.put("replace_original", true);
+		//output.put("replace_original", true);
 		output.put("delete_original", true);
-		output.put("text", "The generated meme..");
 		output.put("attachments", attachments);
 		
 		String jsonString = null;
 		try {
 			jsonString = mapper.writeValueAsString(output);
 			logger.info("Output: " + jsonString);
+			Response slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+					.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
+			
+			logger.info("Message OPTION posted to Slack with status code: " + slackResponse.getStatus());
 		} catch (JsonProcessingException e) {
 			logger.error("Couldn't generate slack output!");
-			errorMap.put("text", "Couldn't generate slack output!");
+			errorMap.put("response_type", "ephemeral");
+			//errorMap.put("replace_original", true);
+			errorMap.put("delete_original", true);
+			errorMap.put("text", "Error while preparing your slack command reply. Sorry for the inconvienience :cry:");
+			Response slackResponse;
 			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+				slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
 			} catch (IOException e1) {
-				logger.error("Error while preparing body to Slack reply");
+				logger.info("Error while preparing your slack command reply.");
 			}
+			return;
 		} catch (IOException e) {
 			logger.error("Couldn't generate slack output!");
-			errorMap.put("text", "Couldn't generate slack output!");
+			errorMap.put("response_type", "ephemeral");
+			//errorMap.put("replace_original", true);
+			errorMap.put("delete_original", true);
+			errorMap.put("text", "Error while preparing your slack command reply. Sorry for the inconvienience :cry:");
+			Response slackResponse;
 			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+				slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
 			} catch (IOException e1) {
-				logger.error("Error while preparing body to Slack reply");
+				logger.info("Error while preparing your slack command reply.");
 			}
+			return;			
+		}			
+		} else {
+			logger.error("The request body is not valid!");
 		}
-		
-		/*WebTarget slackWebTarget = client.target(responseUrl);
-
-		Response slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
-				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
-		
-		logger.info("Message OPTION posted to Slack with status code: " + slackResponse.getStatus());*/
-		return new ResponseEntity<>(jsonString, HttpStatus.OK);
 	}
 
 	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
-	public @ResponseBody ResponseEntity<?> confirmPost(HttpServletRequest request) {
+	public void confirmPost(HttpServletRequest request) {
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_"
 				+ request.getRemoteUser());
-		String text = null;
 		String imageUrl = null;
 		String bodyString = request.getParameterMap().get("payload")[0];
 		logger.info("Payload: " + bodyString);
+		ClientConfig clientConfig = new ClientConfig();
+		clientConfig.register(JacksonFeature.class);
+		Client client = ClientBuilder.newClient(clientConfig);
 		ObjectMapper mapper = new ObjectMapper();
 		LinkedHashMap<String, Object> errorMap = new LinkedHashMap<String, Object>();
 		JsonNode payload;
+		WebTarget webTarget = null;
 		try {
-			payload = mapper.readTree(bodyString);			
+			payload = mapper.readTree(bodyString);
+			if (payload.isNull() || !payload.has("response_url") || payload.has("original_message")){
+				logger.error("Error because of either of the following: The generated payload from request is null, payload doesn't contain response url or original message.");;
+				return;
+			}
+			String responseUrl = payload.get("response_url").getTextValue();
+			logger.info("ResponseUrl: " + responseUrl);
+			webTarget = client.target(responseUrl);		
+
 			JsonNode actions = payload.get("actions");
 			String command = actions.get(0).get("name").getTextValue();			
 
 			if (command.equalsIgnoreCase("post")) {
 				JsonNode originalMessage = payload.get("original_message");
-				text = (originalMessage.get("text")!=null)?originalMessage.get("text").getTextValue():"Your memefied image...";
 				JsonNode attachements = originalMessage.get("attachments");
-				if (attachements.isArray() && (attachements.size() == 2)) {
-					if (attachements.get(0).has("image_url")) {
-						imageUrl = attachements.get(0).get("image_url").getTextValue();
-					} else if (attachements.get(1).has("image_url")) {
-						imageUrl = attachements.get(1).get("image_url").getTextValue();
+				for (JsonNode node: attachements) {
+					if(node.get("callback_id").getTextValue().equalsIgnoreCase("confirm_meme_image")) {
+						imageUrl = node.get("image_url").getTextValue();
+						break;
 					}
-				} 
-				if (imageUrl == null) {
-					errorMap.put("response_type", "ephemeral");
-					errorMap.put("replace_original", true);
-					errorMap.put("delete_original", true);
-					errorMap.put("text", "Couldn't find image in attachement from Slack!");
-					return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
-				}								
-				logger.info(originalMessage.get("text").getTextValue());
-				String responseUrl = payload.get("response_url").getTextValue();
-				logger.info("ResponseUrl: " + responseUrl);
+				}	
+				String user = payload.get("user").get("name").getTextValue();
+				
+				ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
+				LinkedHashMap<String, Object> attachment = new LinkedHashMap<String, Object>();
+				attachment.put("image_url", imageUrl);
+				attachments.add(attachment);
+
+				LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
+				output.put("response_type", "in_channel");
+				output.put("replace_original", true);
+				//output.put("delete_original", true);
+				output.put("text", "@"+ user + " memed :smiley:");
+				output.put("attachments", attachments);
+				String jsonString = null;
+				jsonString = mapper.writeValueAsString(output);
+				logger.info("Output: " + jsonString);			
+
+				Response response = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Message Confirmation posted to Slack with status code: " + response.getStatus());
 			} else if (command.equalsIgnoreCase("cancel")) {
 				errorMap.put("response_type", "ephemeral");
-				errorMap.put("replace_original", true);
+				//errorMap.put("replace_original", true);
 				errorMap.put("delete_original", true);
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.OK);
+				Response slackResponse = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));			
+				logger.info("Cancel received from slack. Cancel message posted to Slack with status code: " + slackResponse.getStatus());
+				return;
 			} else {
 				errorMap.put("response_type", "ephemeral");
-				errorMap.put("replace_original", true);
+				//errorMap.put("replace_original", true);
 				errorMap.put("delete_original", true);
-				errorMap.put("text", "Not allowed button command!");
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
+				Response slackResponse = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));			
+				logger.info("Invalid Command button received from slack. Cancel message posted to Slack with status code: " + slackResponse.getStatus());
+				return;
 			}
-
+			
 		} catch (IOException e) {
-			logger.info("Couldn't read input! " + e.getMessage());
+			logger.info("Error while reading/writing message from/to slack!" + e.getMessage());
 			errorMap.put("response_type", "ephemeral");
-			errorMap.put("replace_original", true);
+			//errorMap.put("replace_original", true);
 			errorMap.put("delete_original", true);
-			errorMap.put("text", "Not allowed button command!");
+			errorMap.put("text", "Error while reading/writing message from/to slack!. Sorry for the inconvienience :cry:");
+			Response slackResponse;
 			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+				slackResponse = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
 			} catch (IOException e1) {
-				logger.error("Couldn't prepare error output! " + e1.getMessage());
+				logger.info("Error while preparing your slack command reply.");
 			}
 		}
-
-		ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
-		LinkedHashMap<String, Object> attachment = new LinkedHashMap<String, Object>();
-		attachment.put("image_url", imageUrl);
-		attachments.add(attachment);
-
-		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
-		output.put("response_type", "ephemeral");
-		output.put("replace_original", true);
-		output.put("delete_original", true);
-		output.put("text", "Well here is your meme..");
-		output.put("attachments", attachments);
-		String jsonString = null;
-		try {
-			jsonString = mapper.writeValueAsString(output);
-			logger.info("Output: " + jsonString);
-		} catch (JsonProcessingException e) {
-			logger.error("Couldn't generate slack output!");
-			errorMap.put("text", "Couldn't generate slack output!");
-			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
-			} catch (IOException e1) {
-				logger.error("Error while preparing body to Slack reply");
-			}
-		} catch (IOException e) {
-			logger.error("Couldn't generate slack output!");
-			errorMap.put("text", "Couldn't generate slack output!");
-			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
-			} catch (IOException e1) {
-				logger.error("Error while preparing body to Slack reply");
-			}
-		}
-		/*ClientConfig clientConfig = new ClientConfig();
-		clientConfig.register(JacksonFeature.class);
-		Client client = ClientBuilder.newClient(clientConfig);
-		WebTarget webTarget = client.target(responseUrl).path("/");
-
-		Response response = webTarget.request(MediaType.APPLICATION_JSON_TYPE)
-				.post(Entity.entity(jsonString, MediaType.APPLICATION_JSON_TYPE));
-		logger.info("Message Confirmation posted to Slack with status code: " + response.getStatus());*/
-		return new ResponseEntity<>(jsonString, HttpStatus.OK);
 	}
 }
