@@ -141,6 +141,8 @@ public class SlackMemeController {
 		//prepare output
 		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
 		output.put("response_type", "in_channel");
+		output.put("replace_original", true);
+		output.put("delete_original", true);
 		output.put("text", "The generated meme..");
 		output.put("attachments", attachments);
 		
@@ -203,6 +205,9 @@ public class SlackMemeController {
 					}
 				} 
 				if (imageUrl == null) {
+					errorMap.put("response_type", "ephemeral");
+					errorMap.put("replace_original", true);
+					errorMap.put("delete_original", true);
 					errorMap.put("text", "Couldn't find image in attachement from Slack!");
 					return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
 				}								
@@ -210,14 +215,23 @@ public class SlackMemeController {
 				String responseUrl = payload.get("response_url").getTextValue();
 				logger.info("ResponseUrl: " + responseUrl);
 			} else if (command.equalsIgnoreCase("cancel")) {
+				errorMap.put("response_type", "ephemeral");
+				errorMap.put("replace_original", true);
+				errorMap.put("delete_original", true);
 				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.OK);
 			} else {
+				errorMap.put("response_type", "ephemeral");
+				errorMap.put("replace_original", true);
+				errorMap.put("delete_original", true);
 				errorMap.put("text", "Not allowed button command!");
 				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.BAD_REQUEST);
 			}
 
 		} catch (IOException e) {
 			logger.info("Couldn't read input! " + e.getMessage());
+			errorMap.put("response_type", "ephemeral");
+			errorMap.put("replace_original", true);
+			errorMap.put("delete_original", true);
 			errorMap.put("text", "Not allowed button command!");
 			try {
 				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
@@ -232,8 +246,10 @@ public class SlackMemeController {
 		attachments.add(attachment);
 
 		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
-		output.put("response_type", "in_channel");
-		output.put("text", text);
+		output.put("response_type", "ephemeral");
+		output.put("replace_original", true);
+		output.put("delete_original", true);
+		output.put("text", "Well here is your meme..");
 		output.put("attachments", attachments);
 		String jsonString = null;
 		try {
