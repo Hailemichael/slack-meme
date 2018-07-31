@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -36,7 +37,8 @@ import org.glassfish.jersey.jackson.JacksonFeature;
 @RequestMapping("/")
 public class SlackMemeController {
 	private static final Logger logger = LoggerFactory.getLogger(SlackMemeController.class);
-
+	
+	@ResponseStatus(value = HttpStatus.OK)
 	@RequestMapping(value = "/meme", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
 	public void memefyImage(HttpServletRequest request) {
 		logger.info("Incomming request on path: " + request.getServletPath() + " and from addr: "
@@ -48,7 +50,6 @@ public class SlackMemeController {
 		Client client = ClientBuilder.newClient(clientConfig);
 		LinkedHashMap<String, Object> errorMap = new LinkedHashMap<String, Object>();
 		Map<String, String[]> parameterMap = request.getParameterMap();
-		if (!parameterMap.isEmpty() && parameterMap.containsValue("response_url") && parameterMap.get("response_url")[0] != null) {
 		logger.info(parameterMap.get("team_id")[0] + ":" + parameterMap.get("team_domain")[0] + ", "
 				+ parameterMap.get("channel_id")[0] + ":" + parameterMap.get("channel_name")[0] + ", "
 				+ parameterMap.get("user_id")[0] + ":" + parameterMap.get("user_name")[0] + ", "
@@ -191,12 +192,10 @@ public class SlackMemeController {
 				logger.info("Error while preparing your slack command reply.");
 			}
 			return;			
-		}			
-		} else {
-			logger.error("The request body is not valid!");
 		}
 	}
-
+	
+	@ResponseStatus(value = HttpStatus.OK)
 	@RequestMapping(value = "/meme/confirm", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
 	public void confirmPost(HttpServletRequest request) {
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_"
