@@ -212,7 +212,7 @@ public class SlackMemeController {
 		WebTarget webTarget = null;
 		try {
 			payload = mapper.readTree(bodyString);
-			if (payload.isNull() || !payload.has("response_url") || payload.has("original_message")){
+			if (payload.isNull() || !payload.has("response_url") || !payload.has("original_message")){
 				logger.error("Error because of either of the following: The generated payload from request is null, payload doesn't contain response url or original message.");;
 				return;
 			}
