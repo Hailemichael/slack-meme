@@ -1,10 +1,19 @@
 package com.haile.apps.slack.meme.controller;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.client.Client;
@@ -17,40 +26,52 @@ import javax.ws.rs.core.Response;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
+
+import com.haile.apps.slack.meme.async.MemeImage;
+
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
 import org.glassfish.jersey.jackson.JacksonFeature;
+import org.glassfish.jersey.media.multipart.FormDataBodyPart;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 
 @Controller
 @RequestMapping("/")
 public class SlackMemeController {
 	private static final Logger logger = LoggerFactory.getLogger(SlackMemeController.class);
 	
-	@Value("${memefy.user}")
-	private String memefyUser;
+	@Value("${ftp.api.uri}")
+	private String ftpApiUri;
 	
-	@Value("${memefy.password}")
-	private String memefyPassword;
+	@Value("${ftp.api.user}")
+	private String ftpApiUser;
+	
+	@Value("${ftp.api.password}")
+	private String ftpApiPassword;
+	
+	@Autowired
+	private MemeImage memeImage;
 	
 	@ResponseStatus(value = HttpStatus.OK)
 	@RequestMapping(value = "/meme", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
 	public void memefyImage(HttpServletRequest request) {
 		logger.info("Incomming request on path: " + request.getServletPath() + " and from addr: "
 				+ request.getRemoteAddr());
-		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic(memefyUser, memefyPassword);
-		ClientConfig clientConfig = new ClientConfig();
-		clientConfig.register(authFeature);
-		clientConfig.register(JacksonFeature.class);
-		Client client = ClientBuilder.newClient(clientConfig);
+		
 		LinkedHashMap<String, Object> errorMap = new LinkedHashMap<String, Object>();
 		Map<String, String[]> parameterMap = request.getParameterMap();
 		logger.info(parameterMap.get("team_id")[0] + ":" + parameterMap.get("team_domain")[0] + ", "
@@ -60,7 +81,7 @@ public class SlackMemeController {
 		String responseUrl = parameterMap.get("response_url")[0];
 		logger.info("ResponseUrl: " + responseUrl);
 		
-		WebTarget slackWebTarget = client.target(responseUrl);
+		
 		String slackMessage = parameterMap.get("text")[0];
 		String imageUrl = null;
 		String memeText = null;
@@ -75,9 +96,29 @@ public class SlackMemeController {
 			imageUrl = "http://habeshait.com/MemePics/original/sunflower.jpg";
 			memeText = slackMessage;
 		}
+		
+		CompletableFuture<HashMap<String, Object>> futureMap;
+		try {
+			futureMap = memeImage.convertToMeme(imageUrl, memeText, true);
+		} catch (Exception e3) {
+			logger.error("Error occured while generateing meme asynchonuously!");
+			return;
+		}
+		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic(ftpApiUser, ftpApiPassword);
+		ClientConfig clientConfig = new ClientConfig();
+		clientConfig.register(authFeature);
+		clientConfig.register(JacksonFeature.class);
+		clientConfig.register(MultiPartFeature.class);
+		Client client = ClientBuilder.newClient(clientConfig);
+		WebTarget ftpWebTarget = client.target(ftpApiUri);
+		FormDataMultiPart formDataMultiPart = new FormDataMultiPart();        
+        formDataMultiPart.field("path", "/memefied");
+        formDataMultiPart.setMediaType(MediaType.MULTIPART_FORM_DATA_TYPE);        
+        
+		WebTarget slackWebTarget = client.target(responseUrl);
 		ObjectMapper mapper = new ObjectMapper();
 		//memefyapi request
-		HashMap<String, String> memeRequest = new HashMap<String, String>();
+/*		HashMap<String, String> memeRequest = new HashMap<String, String>();
 		memeRequest.put("imageUrl", imageUrl);
 		memeRequest.put("memeText", memeText);
 				
@@ -124,17 +165,15 @@ public class SlackMemeController {
     			
 		HashMap<String, String> memeResponseMap = memeResponse.readEntity(new GenericType<HashMap<String, String>>() { });
 		String memeImageUrl = memeResponseMap.get("imageUrl");
-		logger.info("meme image url: " + memeImageUrl);
+		logger.info("meme image url: " + memeImageUrl);*/
 		//End
 		
 		// Prepare image attachments
 		ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
 		LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<String, Object>();
-		imageAttachment.put("fallback", memeImageUrl);
 		imageAttachment.put("callback_id", "confirm_meme_image");
 		imageAttachment.put("color", "#ffff00");
 		imageAttachment.put("attachment_type", "default");
-		imageAttachment.put("image_url", memeImageUrl);
 		
 		// Prepare option attachments
 		LinkedHashMap<String, Object> optionAttachment = new LinkedHashMap<String, Object>();
@@ -158,15 +197,63 @@ public class SlackMemeController {
 		actions.add(actionCancel);
 		
 		optionAttachment.put("actions", actions);
-		
-		attachments.add(imageAttachment);
 		attachments.add(optionAttachment);
-		
-		//prepare output
+
 		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
 		output.put("response_type", "in_channel");
 		output.put("delete_original", true);
+		String fileName = null;
+		try {
+			URL imgURL = new URL(imageUrl);
+			fileName = FilenameUtils.getBaseName(imgURL.getPath());
+		} catch (MalformedURLException e2) {
+			logger.error("image url is not valid");
+			errorMap.put("response_type", "ephemeral");
+			errorMap.put("delete_original", true);
+			errorMap.put("text", "Image url is not valid. Sorry for the inconvienience :cry:");
+			Response slackResponse;
+			try {
+				slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
+			} catch (IOException e1) {
+				logger.info("Error while preparing your slack command reply.");
+			}
+			return;
+		}		
+		String targetFileName = (new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ss.SSSZ")).format(new Date()) + "_" + fileName + ".";
+		HashMap<String, Object> memeMap = new HashMap<String, Object>();
+		try {
+			memeMap = futureMap.get();
+		} catch (InterruptedException | ExecutionException e2) {
+			logger.error("Asynchronous meme generation interrupted or ExecutionException occured!");
+			errorMap.put("response_type", "ephemeral");
+			errorMap.put("delete_original", true);
+			errorMap.put("text", "Error occured in meme generation. Sorry for the inconvienience :cry:");
+			Response slackResponse;
+			try {
+				slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
+			} catch (IOException e1) {
+				logger.info("Error while preparing your slack command reply.");
+			}
+			return;
+		}
+		targetFileName += memeMap.get("suffix");
+
+		imageAttachment.put("fallback", "http://habeshait.com/MemePics/memefied/" + targetFileName);
+		imageAttachment.put("image_url", "http://habeshait.com/MemePics/memefied/" + targetFileName);		
+		attachments.add(imageAttachment);
 		output.put("attachments", attachments);
+		byte[] imageByte = (byte[]) memeMap.get("memeBytes");
+		FormDataBodyPart bodyPart = new FormDataBodyPart("file", new ByteArrayInputStream(imageByte), MediaType.APPLICATION_OCTET_STREAM_TYPE);
+        bodyPart.setContentDisposition(FormDataContentDisposition.name("file").fileName(targetFileName).size(imageByte.length).build());
+        formDataMultiPart.bodyPart(bodyPart);
+        
+		Response response = ftpWebTarget.request(MediaType.APPLICATION_JSON_TYPE).post(Entity.entity(formDataMultiPart, formDataMultiPart.getMediaType()));
+		HashMap<String, String> map = response.readEntity(new GenericType<HashMap<String, String>>() { });
+		logger.info("Successful FTP upload: " + map);
 		
 		String jsonString = null;
 		try {
