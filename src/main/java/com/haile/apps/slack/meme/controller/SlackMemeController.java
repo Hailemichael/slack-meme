@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,12 +35,18 @@ import org.glassfish.jersey.jackson.JacksonFeature;
 public class SlackMemeController {
 	private static final Logger logger = LoggerFactory.getLogger(SlackMemeController.class);
 	
+	@Value("${memefy.user}")
+	private String memefyUser;
+	
+	@Value("${memefy.password}")
+	private String memefyPassword;
+	
 	@ResponseStatus(value = HttpStatus.OK)
 	@RequestMapping(value = "/meme", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED, produces = MediaType.APPLICATION_JSON)
 	public void memefyImage(HttpServletRequest request) {
 		logger.info("Incomming request on path: " + request.getServletPath() + " and from addr: "
 				+ request.getRemoteAddr());
-		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic("admin", "abbhst");
+		HttpAuthenticationFeature authFeature = HttpAuthenticationFeature.basic(memefyUser, memefyPassword);
 		ClientConfig clientConfig = new ClientConfig();
 		clientConfig.register(authFeature);
 		clientConfig.register(JacksonFeature.class);
