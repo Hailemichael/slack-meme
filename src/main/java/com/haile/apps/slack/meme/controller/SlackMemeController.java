@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.client.Client;
@@ -19,12 +18,9 @@ import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonProcessingException;
@@ -74,7 +70,7 @@ public class SlackMemeController {
 		}
 		ObjectMapper mapper = new ObjectMapper();
 		//memefyapi request
-		/*HashMap<String, String> memeRequest = new HashMap<String, String>();
+		HashMap<String, String> memeRequest = new HashMap<String, String>();
 		memeRequest.put("imageUrl", imageUrl);
 		memeRequest.put("memeText", memeText);
 				
@@ -85,20 +81,32 @@ public class SlackMemeController {
 			logger.info("Memefy json Body: " + memefyJsonString);
 		} catch (JsonProcessingException e) {
 			logger.error("Couldn't generate body to MemefyApi!");
-			errorMap.put("text", "Couldn't memefy the image resource specified by url: " + imageUrl);
+			errorMap.put("response_type", "ephemeral");
+			errorMap.put("delete_original", true);
+			errorMap.put("text", "Error generating meme. Sorry for the inconvienience :cry:");
+			Response slackResponse;
 			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+				slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
 			} catch (IOException e1) {
-				logger.error("Error while preparing body to Memefy API request");
+				logger.info("Error while preparing body to slack command reply.");
 			}
+			return;
 		} catch (IOException e) {
 			logger.error("Couldn't generate body to MemefyApi!");
-			errorMap.put("text", "Couldn't memefy the image resource specified by url: " + imageUrl);
+			errorMap.put("response_type", "ephemeral");
+			errorMap.put("delete_original", true);
+			errorMap.put("text", "Error generating meme. Sorry for the inconvienience :cry:");
+			Response slackResponse;
 			try {
-				return new ResponseEntity<>(mapper.writeValueAsString(errorMap), HttpStatus.INTERNAL_SERVER_ERROR);
+				slackResponse = slackWebTarget.request(MediaType.APPLICATION_JSON_TYPE)
+						.post(Entity.entity(mapper.writeValueAsString(errorMap), MediaType.APPLICATION_JSON_TYPE));
+				logger.info("Error message posted to Slack with status code: " + slackResponse.getStatus());
 			} catch (IOException e1) {
-				logger.error("Error while preparing body to Memefy API request");
+				logger.info("Error while preparing body to slack command reply.");
 			}
+			return;
 		}
 		
 		
@@ -109,7 +117,7 @@ public class SlackMemeController {
     			
 		HashMap<String, String> memeResponseMap = memeResponse.readEntity(new GenericType<HashMap<String, String>>() { });
 		String responseImageUrl = memeResponseMap.get("imageUrl");
-		logger.info("meme image url: " + responseImageUrl);*/
+		logger.info("meme image url: " + responseImageUrl);
 		//End
 		
 		// Prepare image attachments
@@ -150,7 +158,6 @@ public class SlackMemeController {
 		//prepare output
 		LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
 		output.put("response_type", "in_channel");
-		//output.put("replace_original", true);
 		output.put("delete_original", true);
 		output.put("attachments", attachments);
 		
@@ -165,7 +172,6 @@ public class SlackMemeController {
 		} catch (JsonProcessingException e) {
 			logger.error("Couldn't generate slack output!");
 			errorMap.put("response_type", "ephemeral");
-			//errorMap.put("replace_original", true);
 			errorMap.put("delete_original", true);
 			errorMap.put("text", "Error while preparing your slack command reply. Sorry for the inconvienience :cry:");
 			Response slackResponse;
@@ -180,7 +186,6 @@ public class SlackMemeController {
 		} catch (IOException e) {
 			logger.error("Couldn't generate slack output!");
 			errorMap.put("response_type", "ephemeral");
-			//errorMap.put("replace_original", true);
 			errorMap.put("delete_original", true);
 			errorMap.put("text", "Error while preparing your slack command reply. Sorry for the inconvienience :cry:");
 			Response slackResponse;
@@ -233,7 +238,7 @@ public class SlackMemeController {
 						break;
 					}
 				}	
-				String user = payload.get("user").get("name").getTextValue();
+				String id = payload.get("user").get("id").getTextValue();
 				
 				ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
 				LinkedHashMap<String, Object> attachment = new LinkedHashMap<String, Object>();
@@ -248,7 +253,7 @@ public class SlackMemeController {
 				output.put("response_type", "in_channel");
 				output.put("replace_original", true);
 				//output.put("delete_original", true);
-				output.put("text", "@"+ user + " memed :smiley:");
+				output.put("text", "<@"+ id + "> memed :smiley:");
 				output.put("attachments", attachments);
 				String jsonString = null;
 				jsonString = mapper.writeValueAsString(output);
