@@ -123,18 +123,18 @@ public class SlackMemeController {
 				.post(Entity.entity(memefyJsonString, MediaType.APPLICATION_JSON_TYPE));
     			
 		HashMap<String, String> memeResponseMap = memeResponse.readEntity(new GenericType<HashMap<String, String>>() { });
-		String responseImageUrl = memeResponseMap.get("imageUrl");
-		logger.info("meme image url: " + responseImageUrl);
+		String memeImageUrl = memeResponseMap.get("imageUrl");
+		logger.info("meme image url: " + memeImageUrl);
 		//End
 		
 		// Prepare image attachments
 		ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
 		LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<String, Object>();
-		imageAttachment.put("fallback", imageUrl);
+		imageAttachment.put("fallback", memeImageUrl);
 		imageAttachment.put("callback_id", "confirm_meme_image");
 		imageAttachment.put("color", "#ffff00");
 		imageAttachment.put("attachment_type", "default");
-		imageAttachment.put("image_url", imageUrl);
+		imageAttachment.put("image_url", memeImageUrl);
 		
 		// Prepare option attachments
 		LinkedHashMap<String, Object> optionAttachment = new LinkedHashMap<String, Object>();
