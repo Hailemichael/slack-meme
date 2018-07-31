@@ -117,7 +117,7 @@ public class SlackMemeController {
 		LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<String, Object>();
 		imageAttachment.put("fallback", imageUrl);
 		imageAttachment.put("callback_id", "confirm_meme_image");
-		imageAttachment.put("color", "#00cc66");
+		imageAttachment.put("color", "#ffff00");
 		imageAttachment.put("attachment_type", "default");
 		imageAttachment.put("image_url", imageUrl);
 		
@@ -200,7 +200,7 @@ public class SlackMemeController {
 	public void confirmPost(HttpServletRequest request) {
 		logger.info("Incomming request: " + request.getServletPath() + "_" + request.getRemoteAddr() + "_"
 				+ request.getRemoteUser());
-		String imageUrl = null;
+		
 		String bodyString = request.getParameterMap().get("payload")[0];
 		logger.info("Payload: " + bodyString);
 		ClientConfig clientConfig = new ClientConfig();
@@ -222,13 +222,14 @@ public class SlackMemeController {
 
 			JsonNode actions = payload.get("actions");
 			String command = actions.get(0).get("name").getTextValue();			
-
 			if (command.equalsIgnoreCase("post")) {
 				JsonNode originalMessage = payload.get("original_message");
 				JsonNode attachements = originalMessage.get("attachments");
+				JsonNode imageNode = null;
 				for (JsonNode node: attachements) {
 					if(node.get("callback_id").getTextValue().equalsIgnoreCase("confirm_meme_image")) {
-						imageUrl = node.get("image_url").getTextValue();
+						imageNode = node;
+						
 						break;
 					}
 				}	
@@ -236,7 +237,11 @@ public class SlackMemeController {
 				
 				ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<LinkedHashMap<String, Object>>();
 				LinkedHashMap<String, Object> attachment = new LinkedHashMap<String, Object>();
-				attachment.put("image_url", imageUrl);
+				attachment.put("fallback", imageNode.get("fallback").getTextValue());
+				attachment.put("callback_id", imageNode.get("callback_id").getTextValue());
+				attachment.put("color", "#00cc66");
+				attachment.put("attachment_type", "default");
+				attachment.put("image_url", imageNode.get("image_url").getTextValue());
 				attachments.add(attachment);
 
 				LinkedHashMap<String, Object> output = new LinkedHashMap<String, Object>();
