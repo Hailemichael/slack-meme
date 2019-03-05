@@ -39,8 +39,8 @@ public class SlackClientTest {
          }
 
      }*/
-     String a = "\"https://i.imgur.com/YyowouS.jpg\"";
-     System.out.println(a.replaceAll("\"", ""));
+     String a = "https:\\/\\/i.imgur.com\\/S11OV5F.jpg";
+     System.out.println(a.replaceAll("\"", "").replaceAll("\\\\", "").trim());
  }
 
 

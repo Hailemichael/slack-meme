@@ -189,12 +189,13 @@ public class ImgurController {
 
             ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<>();
             LinkedHashMap<String, Object> attachment = new LinkedHashMap<>();
-            if(imageNode.has("fallback")) {
-                attachment.put("fallback", imageNode.get("fallback").getTextValue());
+            if(imageNode.has("image_url")) {
+                String slackImageUrl = imageNode.get("image_url").getTextValue().replaceAll("\"", "").replaceAll("\\\\", "").trim();
+                attachment.put("fallback", slackImageUrl);
                 attachment.put("callback_id", imageNode.get("callback_id").getTextValue());
                 attachment.put("color", "#00cc66");
                 attachment.put("attachment_type", "default");
-                attachment.put("image_url", imageNode.get("fallback").getTextValue()); // TODO: Need to be changed to image_url.
+                attachment.put("image_url", slackImageUrl);
                 attachments.add(attachment);
             }
 
