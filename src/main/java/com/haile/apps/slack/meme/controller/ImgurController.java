@@ -128,7 +128,9 @@ public class ImgurController {
         output.put("delete_original", true);
         output.put("attachments", attachments);
         try {
-            slackClient.postToSlack(mapper.writeValueAsString(output));
+            String toSlack = mapper.writeValueAsString(output);
+            slackClient.postToSlack(toSlack);
+            logger.info("Initial Response to Slack: " + toSlack);
         } catch (IOException e) {
             logger.error("Error while preparing body to slack command reply.");
         }
@@ -187,12 +189,15 @@ public class ImgurController {
 
             ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<>();
             LinkedHashMap<String, Object> attachment = new LinkedHashMap<>();
-            attachment.put("fallback", imageNode.get("fallback").getTextValue());
-            attachment.put("callback_id", imageNode.get("callback_id").getTextValue());
-            attachment.put("color", "#00cc66");
-            attachment.put("attachment_type", "default");
-            attachment.put("image_url", imageNode.get("image_url").getTextValue());
-            attachments.add(attachment);
+            if(imageNode.has("fallback")) {
+                attachment.put("fallback", imageNode.get("fallback").getTextValue());
+                attachment.put("callback_id", imageNode.get("callback_id").getTextValue());
+                attachment.put("color", "#00cc66");
+                attachment.put("attachment_type", "default");
+                attachment.put("image_url", imageNode.get("fallback").getTextValue());
+                attachments.add(attachment);
+            }
+
 
             LinkedHashMap<String, Object> output = new LinkedHashMap<>();
             output.put("response_type", "in_channel");
@@ -203,7 +208,9 @@ public class ImgurController {
 
             SlackClient slackClient = new SlackClient(responseUrl);
             try {
-                slackClient.postToSlack(mapper.writeValueAsString(output));
+               String toSlack = mapper.writeValueAsString(output);
+               slackClient.postToSlack(toSlack);
+               logger.info("Slack Confirmation: " + toSlack);
             } catch (IOException e) {
                 logger.error("Error while preparing body to slack command reply.");
             }
