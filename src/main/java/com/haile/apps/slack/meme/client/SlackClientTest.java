@@ -15,7 +15,7 @@ public class SlackClientTest {
     private static final String IMGUR_BASE_URL = "https://api.imgur.com/3/gallery/search/viral/all/2";
  public static void main(String [] args) {
      SlackClient imgurClient = new SlackClient(IMGUR_BASE_URL);
-     Response imgurResponse = imgurClient.getImgurImageUrls("meme " + "cool", "b67f9877da5b315");
+     Response imgurResponse = imgurClient.getImgurImageUrls("meme " + "crazy", "b67f9877da5b315");
 
      ObjectMapper mapper = new ObjectMapper();
      JsonNode memeResponseMap = null;
@@ -31,6 +31,7 @@ public class SlackClientTest {
              if (memeResponseMap.get("data").get(i).get("images").has(0)) {
                  if (memeResponseMap.get("data").get(i).get("images").get(0).has("link")) {
                      String imgUrl = String.valueOf(memeResponseMap.get("data").get(i).get("images").get(0).get("link"));
+                     logger.info(imgUrl);
                      imgUrls.add(imgUrl);
                  }
              }

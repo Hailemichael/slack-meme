@@ -80,6 +80,7 @@ public class ImgurController {
                 if (memeResponseMap.get("data").get(i).get("images").has(0)) {
                     if (memeResponseMap.get("data").get(i).get("images").get(0).has("link")) {
                         String imgUrl = String.valueOf(memeResponseMap.get("data").get(i).get("images").get(0).get("link"));
+                        logger.info(imgUrl);
                         imgUrls.add(imgUrl);
                     }
                 }
@@ -87,14 +88,17 @@ public class ImgurController {
 
         }
 
+        String slackImageUrl = imgUrls.get(0);
+        logger.info("### Image URL: " + slackImageUrl);
+
         // Prepare image attachments
         ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<>();
         LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<>();
-        imageAttachment.put("fallback", imgUrls.get(0));
+        imageAttachment.put("fallback", slackImageUrl);
         imageAttachment.put("callback_id", "confirm_meme_image");
         imageAttachment.put("color", "#ffff00");
         imageAttachment.put("attachment_type", "default");
-        imageAttachment.put("image_url", imgUrls.get(0));
+        imageAttachment.put("image_url", slackImageUrl);
 
         // Prepare option attachments
         LinkedHashMap<String, Object> optionAttachment = new LinkedHashMap<>();
