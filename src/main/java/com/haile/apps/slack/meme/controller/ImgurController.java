@@ -80,25 +80,21 @@ public class ImgurController {
                 if (memeResponseMap.get("data").get(i).get("images").has(0)) {
                     if (memeResponseMap.get("data").get(i).get("images").get(0).has("link")) {
                         String imgUrl = String.valueOf(memeResponseMap.get("data").get(i).get("images").get(0).get("link"));
-                        logger.info(imgUrl);
-                        imgUrls.add(imgUrl);
+                        imgUrls.add(imgUrl.replaceAll("\"", "").trim());
                     }
                 }
             }
 
         }
 
-        String slackImageUrl = imgUrls.get(0);
-        logger.info("### Image URL: " + slackImageUrl);
-
         // Prepare image attachments
         ArrayList<LinkedHashMap<String, Object>> attachments = new ArrayList<>();
         LinkedHashMap<String, Object> imageAttachment = new LinkedHashMap<>();
-        imageAttachment.put("fallback", slackImageUrl);
+        imageAttachment.put("fallback", imgUrls.get(0));
         imageAttachment.put("callback_id", "confirm_meme_image");
         imageAttachment.put("color", "#ffff00");
         imageAttachment.put("attachment_type", "default");
-        imageAttachment.put("image_url", slackImageUrl);
+        imageAttachment.put("image_url", imgUrls.get(0));
 
         // Prepare option attachments
         LinkedHashMap<String, Object> optionAttachment = new LinkedHashMap<>();
@@ -198,7 +194,7 @@ public class ImgurController {
                 attachment.put("callback_id", imageNode.get("callback_id").getTextValue());
                 attachment.put("color", "#00cc66");
                 attachment.put("attachment_type", "default");
-                attachment.put("image_url", imageNode.get("fallback").getTextValue());
+                attachment.put("image_url", imageNode.get("fallback").getTextValue()); // TODO: Need to be changed to image_url.
                 attachments.add(attachment);
             }
 

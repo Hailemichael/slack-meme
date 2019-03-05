@@ -13,8 +13,9 @@ import java.util.List;
 public class SlackClientTest {
     private static final Logger logger = LoggerFactory.getLogger(SlackClientTest.class);
     private static final String IMGUR_BASE_URL = "https://api.imgur.com/3/gallery/search/viral/all/2";
+
  public static void main(String [] args) {
-     SlackClient imgurClient = new SlackClient(IMGUR_BASE_URL);
+     /*SlackClient imgurClient = new SlackClient(IMGUR_BASE_URL);
      Response imgurResponse = imgurClient.getImgurImageUrls("meme " + "crazy", "b67f9877da5b315");
 
      ObjectMapper mapper = new ObjectMapper();
@@ -37,7 +38,9 @@ public class SlackClientTest {
              }
          }
 
-     }
+     }*/
+     String a = "\"https://i.imgur.com/YyowouS.jpg\"";
+     System.out.println(a.replaceAll("\"", ""));
  }
 
 
