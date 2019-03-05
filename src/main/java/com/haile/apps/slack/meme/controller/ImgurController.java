@@ -17,9 +17,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -39,7 +36,10 @@ public class ImgurController {
     public void getMemes(HttpServletRequest request) {
         logger.info("Incomming request on path: " + request.getServletPath() + " and from addr: "
                 + request.getRemoteAddr());
+        boolean sendErrorToSlack = false;
         LinkedHashMap<String, Object> errorMap = new LinkedHashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+
         Map<String, String[]> parameterMap = request.getParameterMap();
         logger.info(parameterMap.get("team_id")[0] + ":" + parameterMap.get("team_domain")[0] + ", "
                 + parameterMap.get("channel_id")[0] + ":" + parameterMap.get("channel_name")[0] + ", "
@@ -51,10 +51,21 @@ public class ImgurController {
         SlackClient imgurClient = new SlackClient(IMGUR_BASE_URL);
         Response imgurResponse = imgurClient.getImgurImageUrls("meme " + parameterMap.get("text")[0], imgurClientId);
 
-
         SlackClient slackClient = new SlackClient(responseUrl);
         if (imgurResponse.getStatus() != 200) {
-            logger.error("Couldn't generate body to MemefyApi!");
+            sendErrorToSlack = true;
+            logger.error("Request to Imgur API failed with status code: " + imgurResponse.getStatus());
+        }
+
+        JsonNode memeResponseMap = null;
+        try {
+            memeResponseMap = mapper.readTree(imgurResponse.readEntity(String.class));
+        } catch (IOException e) {
+            sendErrorToSlack = true;
+            logger.error("Error while parsing the response from Imgur API: " + e.getMessage());
+        }
+
+        if(sendErrorToSlack) {
             errorMap.put("response_type", "ephemeral");
             errorMap.put("delete_original", true);
             errorMap.put("text", "Error generating meme. Sorry for the inconvenience :cry:");
@@ -62,7 +73,6 @@ public class ImgurController {
             return;
         }
 
-        JsonNode memeResponseMap = imgurResponse.readEntity(JsonNode.class);
         List<String> imgUrls = new ArrayList<>();
         logger.info("Data size: " + memeResponseMap.get("data").size());
         for (int i = 0; i < memeResponseMap.get("data").size(); i++) {
@@ -70,7 +80,6 @@ public class ImgurController {
                 if (memeResponseMap.get("data").get(i).get("images").has(0)) {
                     if (memeResponseMap.get("data").get(i).get("images").get(0).has("link")) {
                         String imgUrl = String.valueOf(memeResponseMap.get("data").get(i).get("images").get(0).get("link"));
-                        logger.info(imgUrl);
                         imgUrls.add(imgUrl);
                     }
                 }
@@ -118,7 +127,6 @@ public class ImgurController {
         output.put("response_type", "in_channel");
         output.put("delete_original", true);
         output.put("attachments", attachments);
-        ObjectMapper mapper = new ObjectMapper();
         try {
             slackClient.postToSlack(mapper.writeValueAsString(output));
         } catch (IOException e) {
