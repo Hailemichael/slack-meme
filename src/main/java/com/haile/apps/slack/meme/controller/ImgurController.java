@@ -62,8 +62,7 @@ public class ImgurController {
             return;
         }
 
-        JsonNode memeResponseMap = imgurResponse.readEntity(new GenericType<JsonNode>() {
-        });
+        JsonNode memeResponseMap = imgurResponse.readEntity(JsonNode.class);
         List<String> imgUrls = new ArrayList<>();
         logger.info("Data size: " + memeResponseMap.get("data").size());
         for (int i = 0; i < memeResponseMap.get("data").size(); i++) {
